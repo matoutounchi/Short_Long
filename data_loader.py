@@ -22,15 +22,23 @@ class DataLoader:
         
         Args:
             exchange_name: نام صرافی (binance, coinbase, etc.)
+        
+        Raises:
+            AttributeError: اگر صرافی مورد نظر وجود نداشته باشد
         """
         self.exchange_name = exchange_name
-        self.exchange = getattr(ccxt, exchange_name)({
-            'enableRateLimit': True,
-            'options': {
-                'defaultType': 'spot'
-            }
-        })
-        logger.info(f"Connected to {exchange_name}")
+        try:
+            exchange_class = getattr(ccxt, exchange_name)
+            self.exchange = exchange_class({
+                'enableRateLimit': True,
+                'options': {
+                    'defaultType': 'spot'
+                }
+            })
+            logger.info(f"Connected to {exchange_name}")
+        except AttributeError:
+            logger.error(f"Exchange {exchange_name} not found in ccxt")
+            raise ValueError(f"Exchange '{exchange_name}' is not supported. Available exchanges: {', '.join(ccxt.exchanges)}")
     
     def get_ticker(self, symbol: str) -> dict:
         """
@@ -104,9 +112,18 @@ class DataLoader:
                     current_since = last_timestamp + 1
                     time.sleep(0.5)  # Rate limit protection
                     
+                    # Prevent infinite loop
+                    if batch > 100:
+                        logger.warning(f"Reached maximum batch limit (100) for {symbol}")
+                        break
+                    
                 except Exception as e:
                     logger.error(f"Error in batch {batch}: {e}")
+                    if batch == 1:  # If first batch fails, retry once
+                        time.sleep(2)
+                        continue
                     time.sleep(5)
+                    break  # Stop on repeated errors
             
             # Convert to DataFrame
             df = pd.DataFrame(

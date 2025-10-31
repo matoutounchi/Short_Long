@@ -6,9 +6,6 @@ EMA Crossover Strategy with Volume Confirmation
 import pandas as pd
 from typing import Optional, Dict
 from .base_strategy import BaseStrategy
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from indicators.technical_indicators import calculate_ema
 
 
